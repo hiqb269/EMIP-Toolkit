@@ -40,7 +40,9 @@ def EMIP(sample_size: int = 216):
     samples = []
     parsed_experiments = []
 
-    if not os.path.isfile(RAWDATA_MODULE):
+    #if not os.path.isfile(RAWDATA_MODULE):
+    #    download("EMIP")
+    if not os.path.isdir(RAWDATA_MODULE):
         download("EMIP")
 
     # go over .tsv files in the rawdata directory add files and count them
