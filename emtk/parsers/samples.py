@@ -14,6 +14,7 @@ def get_samples_columns(token: list = []):
         "trial_id",
         "stimuli_module",
         "stimuli_name",
+        "gender",
     ]
 
     base.extend(token)
@@ -22,7 +23,7 @@ def get_samples_columns(token: list = []):
 
 def samples_list(eye_tracker: str, experiment_id: str,
                  participant_id: str, filename: str, trial_id: str, stimuli_module: str,
-                 stimuli_name: str, token: list = []):
+                 stimuli_name: str, token: list = [],gender: str = "male"):
     '''Store sample features in a list.
 
     Returns
@@ -38,6 +39,7 @@ def samples_list(eye_tracker: str, experiment_id: str,
         trial_id,
         stimuli_module,
         stimuli_name,
+        gender,
     ]
 
     base.extend(token)

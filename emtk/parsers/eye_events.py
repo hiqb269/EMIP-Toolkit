@@ -27,7 +27,8 @@ def get_eye_event_columns() -> list:
         "pupil",
         "amplitude",
         "peak_velocity",
-        "eye_event_type"
+        "eye_event_type",
+        "gender" #added column for gender 
     ]
 
     return base
@@ -39,7 +40,7 @@ def eye_event_list(eye_tracker: str, experiment_id: str,
                    duration: float = np.nan, x0: float = np.nan, y0: float = np.nan,
                    x1: float = np.nan, y1: float = np.nan, token: list = None, pupil: int = np.nan,
                    amplitude: float = np.nan, peak_velocity: float = np.nan,
-                   eye_event_type: str = "blink"):
+                   eye_event_type: str = "blink", gender: str = "male"):
     '''Store eye event features in a list.
 
     Returns
@@ -66,4 +67,5 @@ def eye_event_list(eye_tracker: str, experiment_id: str,
         amplitude,
         peak_velocity,
         eye_event_type,
+        gender,
     ]
