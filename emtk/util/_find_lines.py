@@ -18,7 +18,7 @@ def _find_lines(aois: pd.DataFrame) -> pd.DataFrame:
     temp_rows = []
     for _, row in aois.iterrows():
         name, y, height = row["name"], row["y"], row["height"]
-        line_num = re.search('\d+', name).group(0)
+        line_num = re.search(r'\d+', name).group(0)
         
         temp_rows.append({
         "line_num": int(line_num),
