@@ -153,7 +153,7 @@ def find_aoi(eye_events: pd.DataFrame = pd.DataFrame(),
 
     # Format pandas dataframe
     columns = ['kind', 'name', 'x', 'y', 'width', 'height', 'image']
-    aoi = pd.DataFrame(columns=columns)
+    temp_rows = []
 
     for entry in final_result:
         kind, name, x, y, x0, y0 = entry
@@ -165,9 +165,10 @@ def find_aoi(eye_events: pd.DataFrame = pd.DataFrame(),
         x += margin_width / 2
         width -= margin_width
 
-        value = [kind, name, x, y, width, height, image_name]
-        dic = dict(zip(columns, value))
+        #value = [kind, name, x, y, width, height, image_name]
+        #dic = dict(zip(columns, value))
 
-        aoi = aoi.append(dic, ignore_index=True)
+        temp_rows.append([kind, name, x, y, width, height, image_name])
 
+    aoi = pd.DataFrame(temp_rows,columns=columns)
     return aoi
