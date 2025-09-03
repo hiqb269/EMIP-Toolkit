@@ -3,6 +3,7 @@ import pandas as pd
 
 from .eye_events import eye_event_list, get_eye_event_columns
 from .samples import get_samples_columns, samples_list
+from .gender_mapping import gender_mapping
 
 from emtk.fixation_classification import idt_classifier
 from .download import download
@@ -40,27 +41,37 @@ def EMIP(sample_size: int = 216):
     samples = []
     parsed_experiments = []
 
-    #if not os.path.isfile(RAWDATA_MODULE):
-    #    download("EMIP")
     if not os.path.isdir(RAWDATA_MODULE):
-        download("EMIP")
+        download("EMIP") 
+
 
     # go over .tsv files in the rawdata directory add files and count them
     # r = root, d = directories, f = files
+
+    gender_map = gender_mapping() # Load the gender from metadata
     for r, _, f in os.walk(RAWDATA_MODULE):
         f.sort()
         for file in f:
             if '.tsv' in file:
-                experiment_id = file.split('/')[-1].split('_')[0]
+                experiment_id = file.split('/')[-1].split('_')[0] #Experiment_id refers to participant ID
 
                 if experiment_id not in parsed_experiments:
 
                     parsed_experiments.append(experiment_id)
 
+                    #Get gender for this participant
+                    participant_gender = gender_map.get(experiment_id, None)
+                    if participant_gender is None:
+                        print(f"Warning: No gender data found for participant {experiment_id}")
+                        participant_gender = "male"
+                    else:
+                        print(f"Gender for participant {experiment_id}: {participant_gender}")
+
                     new_eye_events, new_samples = read_SMIRed250(
                         root_dir=r,
                         filename=file,
                         experiment_id=experiment_id,
+                        gender = participant_gender
                     )
 
                     eye_events.extend(new_eye_events)
@@ -86,7 +97,7 @@ def EMIP(sample_size: int = 216):
 
 
 def read_SMIRed250(root_dir, filename, experiment_id,
-                   minimum_duration=50, sample_duration=4, maximum_dispersion=25) -> list:
+                   minimum_duration=50, sample_duration=4, maximum_dispersion=25, gender = None) -> list:
     """Read tsv file from SMI Red 250 eye tracker
 
     Parameters
@@ -143,7 +154,8 @@ def read_SMIRed250(root_dir, filename, experiment_id,
                     trial_id=str(trial_id),
                     stimuli_module=STIMULI_MODULE,
                     stimuli_name=stimuli_name,
-                    token=token
+                    token=token, 
+                    gender = gender
                 )
 
                 samples.append(new_sample)
@@ -175,7 +187,8 @@ def read_SMIRed250(root_dir, filename, experiment_id,
                                                    y0=y_cord,
                                                    token=token,
                                                    pupil=0,
-                                                   eye_event_type="fixation")
+                                                   eye_event_type="fixation",
+                                                   gender = gender)
 
                     eye_events.append(new_eye_event)
 
@@ -207,8 +220,9 @@ def read_SMIRed250(root_dir, filename, experiment_id,
                                        y0=y_cord,
                                        token=token,
                                        pupil=0,
-                                       eye_event_type="fixation")
+                                       eye_event_type="fixation",
+                                       gender = gender)
 
         eye_events.append(new_eye_event)
-
+    print(trial_id)
     return eye_events, samples
