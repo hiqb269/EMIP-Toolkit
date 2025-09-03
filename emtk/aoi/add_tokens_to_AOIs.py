@@ -66,7 +66,7 @@ def add_tokens_to_AOIs(file_path: str, aois_raw: pd.DataFrame) -> pd.DataFrame:
 
     tokens = []
 
-    for location in aois_raw["name"].iteritems():
+    for location in aois_raw["name"].items():
         line_part = location[1].split(' ')
         line_num = int(line_part[1])
         part_num = int(line_part[3])

@@ -61,7 +61,7 @@ def add_srcml_to_AOIs(aois_raw: pd.DataFrame, srcML_path: str) -> pd.DataFrame:
 
     tags = []
 
-    for location in aois_raw["name"].iteritems():
+    for location in aois_raw["name"].items():
         found = False
 
         for srcML_row in srcML_table.itertuples(index=True, name='Pandas'):
