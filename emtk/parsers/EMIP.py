@@ -50,7 +50,8 @@ def EMIP(sample_size: int = 216):
 
     gender_map = gender_mapping() # Load the gender from metadata
     for r, _, f in os.walk(RAWDATA_MODULE):
-        f.sort()
+        f = [name for name in f if name and name[0].isdigit()]
+        f.sort(key=lambda name: int(name.split('_')[0]))
         for file in f:
             if '.tsv' in file:
                 experiment_id = file.split('/')[-1].split('_')[0] #Experiment_id refers to participant ID
