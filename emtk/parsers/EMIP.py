@@ -24,7 +24,7 @@ SAMPLE_BASE_COLUMNS = ['Time', 'Type', 'Trial', 'L Raw X [px]', 'L Raw Y [px]', 
                        'R GVEC Z', 'Frame', 'Aux1']
 
 
-def EMIP(sample_size: int = 216):
+def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool=True):
     """Import the EMIP dataset.
 
     Parameters
@@ -48,10 +48,12 @@ def EMIP(sample_size: int = 216):
     # go over .tsv files in the rawdata directory add files and count them
     # r = root, d = directories, f = files
 
+
     gender_map = gender_mapping() # Load the gender from metadata
     for r, _, f in os.walk(RAWDATA_MODULE):
         f = [name for name in f if name and name[0].isdigit()]
         f.sort(key=lambda name: int(name.split('_')[0]))
+        f = f[start_index:]  # Start from the given index
         for file in f:
             if '.tsv' in file:
                 experiment_id = file.split('/')[-1].split('_')[0] #Experiment_id refers to participant ID
@@ -72,11 +74,13 @@ def EMIP(sample_size: int = 216):
                         root_dir=r,
                         filename=file,
                         experiment_id=experiment_id,
-                        gender = participant_gender
+                        gender = participant_gender,
+                        raw_samples = process_raw_samples 
                     )
 
                     eye_events.extend(new_eye_events)
-                    samples.extend(new_samples)
+                    if process_raw_samples:
+                      samples.extend(new_samples)
 
                 else:
                     print("Error, experiment already in dictionary")
@@ -88,17 +92,25 @@ def EMIP(sample_size: int = 216):
     eye_events_df = pd.DataFrame(eye_events, columns=get_eye_event_columns())
 
     # Convert columns with numbers formatted as strings to dtype of numeric
-    samples_df = pd.DataFrame(
+    if process_raw_samples:
+      samples_df = pd.DataFrame(
         samples, columns=get_samples_columns(SAMPLE_BASE_COLUMNS))
-    id_dfs = samples_df[["experiment_id", "participant_id", "trial_id"]]
-    samples_df = samples_df.apply(pd.to_numeric, errors='ignore')
-    samples_df[id_dfs.columns] = id_dfs
-
-    return eye_events_df, samples_df
+      id_dfs = samples_df[["experiment_id", "participant_id", "trial_id"]]
+      #samples_df = samples_df.apply(pd.to_numeric, errors='ignore')
+      for col in samples_df.columns:
+        try:
+          samples_df[col] = pd.to_numeric(samples_df[col])
+        except (ValueError, TypeError):
+          # Handle columns that cannot be converted to numeric, e.g., leave them as they are
+          pass
+      samples_df[id_dfs.columns] = id_dfs
+      return eye_events_df, samples_df 
+    else:
+      return eye_events_df, []
 
 
 def read_SMIRed250(root_dir, filename, experiment_id,
-                   minimum_duration=50, sample_duration=4, maximum_dispersion=25, gender = None) -> list:
+                   minimum_duration=50, sample_duration=4, maximum_dispersion=25, gender = None, raw_samples: bool=True) -> list:
     """Read tsv file from SMI Red 250 eye tracker
 
     Parameters
@@ -222,8 +234,12 @@ def read_SMIRed250(root_dir, filename, experiment_id,
                                        token=token,
                                        pupil=0,
                                        eye_event_type="fixation",
-                                       gender = gender)
+                                       gender=gender)
 
         eye_events.append(new_eye_event)
-    print(trial_id)
+    #print(trial_id)
+    if not raw_samples:
+      samples = []
+
     return eye_events, samples
+    
