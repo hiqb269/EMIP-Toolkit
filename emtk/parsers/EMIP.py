@@ -24,7 +24,7 @@ SAMPLE_BASE_COLUMNS = ['Time', 'Type', 'Trial', 'L Raw X [px]', 'L Raw Y [px]', 
                        'R GVEC Z', 'Frame', 'Aux1']
 
 
-def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool=True):
+def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool=True, use_minus_one_for_invalid_gaze: bool=True):
     """Import the EMIP dataset.
 
     Parameters
@@ -50,6 +50,7 @@ def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool
 
 
     gender_map = gender_mapping() # Load the gender from metadata
+    print(f"Processing {sample_size} participants starting at {start_index+1}")
     for r, _, f in os.walk(RAWDATA_MODULE):
         f = [name for name in f if name and name[0].isdigit()]
         f.sort(key=lambda name: int(name.split('_')[0]))
@@ -67,15 +68,16 @@ def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool
                     if participant_gender is None:
                         print(f"Warning: No gender data found for participant {experiment_id}")
                         participant_gender = "male"
-                    else:
-                        print(f"Gender for participant {experiment_id}: {participant_gender}")
+                    #else:
+                    #   print(f"Gender for participant {experiment_id}: {participant_gender}")
 
                     new_eye_events, new_samples = read_SMIRed250(
                         root_dir=r,
                         filename=file,
                         experiment_id=experiment_id,
                         gender = participant_gender,
-                        raw_samples = process_raw_samples 
+                        raw_samples = process_raw_samples,
+                        minus_one_invalid=use_minus_one_for_invalid_gaze
                     )
 
                     eye_events.extend(new_eye_events)
@@ -91,6 +93,7 @@ def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool
 
     eye_events_df = pd.DataFrame(eye_events, columns=get_eye_event_columns())
 
+    print("Finished loading eye events for participants.")
     # Convert columns with numbers formatted as strings to dtype of numeric
     if process_raw_samples:
       samples_df = pd.DataFrame(
@@ -110,7 +113,7 @@ def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool
 
 
 def read_SMIRed250(root_dir, filename, experiment_id,
-                   minimum_duration=50, sample_duration=4, maximum_dispersion=25, gender = None, raw_samples: bool=True) -> list:
+                   minimum_duration=50, sample_duration=4, maximum_dispersion=25, gender = None, raw_samples: bool=True, minus_one_invalid: bool=True) -> list:
     """Read tsv file from SMI Red 250 eye tracker
 
     Parameters
@@ -132,7 +135,7 @@ def read_SMIRed250(root_dir, filename, experiment_id,
 
     # Reads raw data and sets up
     tsv_file = open(os.path.join(root_dir, filename))
-    print("parsing file:", filename.split("/")[-1])
+    #print("parsing file:", filename.split("/")[-1])
     text = tsv_file.read()
     text_lines = text.split('\n')
 
@@ -154,12 +157,18 @@ def read_SMIRed250(root_dir, filename, experiment_id,
 
         if active:
             # Filter MSG samples if any exist, or R eye is inValid
-            if token[1] == "SMP" and token[27] != "-1":
+            
+            if token[1] == "SMP":
+              condition = True
+              if minus_one_invalid: 
+                condition = token[27] != "-1"
+              else:
+                condition = token[27] == "1"
                 # Get x and y for each sample (right eye only)
                 # [23] R POR X [px]	 '0.00',
                 # [24] R POR Y [px]	 '0.00',
-
-                new_sample = samples_list(
+              if condition:
+                  new_sample = samples_list(
                     eye_tracker=EYE_TRACKER,
                     experiment_id=experiment_id,
                     participant_id=experiment_id,
@@ -169,12 +178,12 @@ def read_SMIRed250(root_dir, filename, experiment_id,
                     stimuli_name=stimuli_name,
                     token=token, 
                     gender = gender
-                )
+                  )
 
-                samples.append(new_sample)
+                  samples.append(new_sample)
 
-                raw_fixations.append(
-                    [int(token[0]), float(token[23]), float(token[24])])
+                  raw_fixations.append(
+                      [int(token[0]), float(token[23]), float(token[24])])
 
         if token[1] == "MSG" and token[3].find(".jpg") != -1:
 
