@@ -42,9 +42,12 @@ def idt_classifier(raw_fixations, minimum_duration=50, sample_duration=4, maximu
     filter_fixation = []
 
     # Go over all SMPs in trial data
+    count = 0
+    fix = 0
     for timestamp, x_cord, y_cord in raw_fixations:
-
+        count = count + 1
         # Filter (skip) coordinates outside of the screen 1920×1080 px
+
         if x_cord < 0 or y_cord < 0 or x_cord > 1920 or y_cord > 1080:
             continue
 
@@ -55,6 +58,7 @@ def idt_classifier(raw_fixations, minimum_duration=50, sample_duration=4, maximu
         # Calculate dispersion = [max(x) - min(x)] + [max(y) - min(y)]
         dispersion = (max(window_x) - min(window_x)) + \
             (max(window_y) - min(window_y))
+        #print(f"Current dispersion is {dispersion}")            
 
         # If dispersion is above maximum_dispersion
         if dispersion > maximum_dispersion:
@@ -62,14 +66,27 @@ def idt_classifier(raw_fixations, minimum_duration=50, sample_duration=4, maximu
             # Pop last item in window
             window_x.pop()
             window_y.pop()
+            #print(f"Fixation window ends. Maximum dispersion is {maximum_dispersion} Popping last gaze point")
+            #print(f"Length of x-window is {len(window_x)} and length of y-window is {len(window_y)} and window size is {window_size}")
 
             # Add fixation to fixations if window is not empty (size >= window_size)
             if len(window_x) == len(window_y) and len(window_x) > window_size:
+                xcord = statistics.mean(window_x)
+                ycord = statistics.mean(window_y)
+                dur = len(window_x) * sample_duration
+                #if xcord > 0.0 and ycord> 0.0:
                 # The fixation is registered at the centroid of the window points
                 filter_fixation.append(
-                    [timestamp, len(window_x) * sample_duration, statistics.mean(window_x), statistics.mean(window_y)])
+                    [timestamp, len(window_x) * sample_duration, xcord , ycord])
+                fix = fix + 1
+                #print(window_x)
+                #print(window_y)
+                #print(f"Adding fixation for timestamp: {timestamp} of duration {dur} because x0 is {xcord} and ycord is {ycord} ")
+                #else:
+                 # print(f"Skipping fixation for timestamp: {timestamp} of duration {dur} because x0 is {xcord} and ycord is {ycord} ")
 
             window_x = []
             window_y = []
+    #print(f"Processed {count} gaze points and generated {fix} fixations ")
 
     return filter_fixation
