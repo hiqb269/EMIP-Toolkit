@@ -16,7 +16,7 @@ def gender_mapping():
         # Assuming'id' column in metadata corresponds to experiment_id/participant_id
         gender_map = dict(zip(metadata_df['id'].astype(str), metadata_df['gender']))
         print(f"Gender mapping created for {len(gender_map)} participants")
-        print(gender_map)
+        #print(gender_map)
         gender_counts = Counter(gender_map.values())
         print(f"Males: {gender_counts.get('male', 0)}")
         print(f"Females: {gender_counts.get('female', 0)}")
