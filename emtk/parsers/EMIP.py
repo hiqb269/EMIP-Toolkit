@@ -1,4 +1,5 @@
 import os
+from types import NoneType
 import pandas as pd
 
 from .eye_events import eye_event_list, get_eye_event_columns
@@ -6,6 +7,9 @@ from .samples import get_samples_columns, samples_list
 from .gender_mapping import gender_mapping
 
 from emtk.fixation_classification import idt_classifier
+from emtk.fixation_classification import ivt_classifier
+from emtk.fixation_classification import idt_classifier_old
+
 from .download import download
 
 EYE_TRACKER = "SMIRed250"
@@ -24,7 +28,7 @@ SAMPLE_BASE_COLUMNS = ['Time', 'Type', 'Trial', 'L Raw X [px]', 'L Raw Y [px]', 
                        'R GVEC Z', 'Frame', 'Aux1']
 
 
-def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool=True, use_minus_one_for_invalid_gaze: bool=True):
+def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool=True, use_minus_one_for_invalid_gaze: bool=True, classifier="idt", minimum_duration=50, sample_duration=4, maximum_dispersion=25):
     """Import the EMIP dataset.
 
     Parameters
@@ -40,6 +44,7 @@ def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool
     eye_events = []
     samples = []
     parsed_experiments = []
+    all_stimulus_times = []
 
     if not os.path.isdir(RAWDATA_MODULE):
         download("EMIP") 
@@ -50,9 +55,9 @@ def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool
 
 
     gender_map = gender_mapping() # Load the gender from metadata
-    print(f"Processing {sample_size} participants starting at {start_index+1}")
+    #print(f"Processing {sample_size} participants starting at {start_index+1}")
     for r, _, f in os.walk(RAWDATA_MODULE):
-        f = [name for name in f if name and name[0].isdigit()]
+        f = [name for name in f if name and name[0].isdigit() and '.tsv' in name]
         f.sort(key=lambda name: int(name.split('_')[0]))
         f = f[start_index:]  # Start from the given index
         for file in f:
@@ -70,28 +75,35 @@ def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool
                         participant_gender = "male"
                     #else:
                     #   print(f"Gender for participant {experiment_id}: {participant_gender}")
-
-                    new_eye_events, new_samples = read_SMIRed250(
+                    
+                    #print(f"Processing gaze data for participant number {experiment_id} - iteration number {sample_size}")
+                    new_eye_events, new_samples, new_stimulus_times = read_SMIRed250(
                         root_dir=r,
                         filename=file,
                         experiment_id=experiment_id,
+                        minimum_duration=minimum_duration, 
+                        sample_duration= sample_duration, 
+                        maximum_dispersion=maximum_dispersion,
                         gender = participant_gender,
                         raw_samples = process_raw_samples,
-                        minus_one_invalid=use_minus_one_for_invalid_gaze
+                        minus_one_invalid=use_minus_one_for_invalid_gaze,
+                        fix_classifier = classifier
                     )
 
                     eye_events.extend(new_eye_events)
                     if process_raw_samples:
                       samples.extend(new_samples)
+                    all_stimulus_times.extend(new_stimulus_times)
 
                 else:
                     print("Error, experiment already in dictionary")
+                sample_size -= 1
+                if sample_size == 0:
+                  break
 
-            sample_size -= 1
-            if sample_size == 0:
-                break
-
+            
     eye_events_df = pd.DataFrame(eye_events, columns=get_eye_event_columns())
+    stimulus_times_df = pd.DataFrame(all_stimulus_times,columns=["participant_id", "gender", "trial", "stimulus_name", "start_timestamp", "end_timestamp", "time_spenton_stimuli"])
 
     print("Finished loading eye events for participants.")
     # Convert columns with numbers formatted as strings to dtype of numeric
@@ -107,13 +119,13 @@ def EMIP(sample_size: int = 216, start_index: int = 0, process_raw_samples: bool
           # Handle columns that cannot be converted to numeric, e.g., leave them as they are
           pass
       samples_df[id_dfs.columns] = id_dfs
-      return eye_events_df, samples_df 
+      return eye_events_df, samples_df, stimulus_times_df 
     else:
-      return eye_events_df, []
+      return eye_events_df, [], stimulus_times_df
 
 
 def read_SMIRed250(root_dir, filename, experiment_id,
-                   minimum_duration=50, sample_duration=4, maximum_dispersion=25, gender = None, raw_samples: bool=True, minus_one_invalid: bool=True) -> list:
+                   minimum_duration=50, sample_duration=4, maximum_dispersion=25, gender = None, raw_samples: bool=True, minus_one_invalid: bool=True, fix_classifier ="idt", velocity_threshold=100) -> list:
     """Read tsv file from SMI Red 250 eye tracker
 
     Parameters
@@ -144,9 +156,17 @@ def read_SMIRed250(root_dir, filename, experiment_id,
     raw_fixations = []
     active = False  # Indicates whether samples are being recorded in trials
     # The goal is to skip metadata in the file
+    
+    is_new_stimulus = False
+    stimulus_times = []
+    img_start_time = None
+    img_end_time = None
 
     eye_events = []
     samples = []
+    
+
+    
 
     # Parses the data into dataframes
     for line in text_lines:
@@ -159,6 +179,10 @@ def read_SMIRed250(root_dir, filename, experiment_id,
             # Filter MSG samples if any exist, or R eye is inValid
             
             if token[1] == "SMP":
+              if is_new_stimulus:
+                img_start_time = int(token[0])
+                is_new_stimulus = False
+              img_end_time = int(token[0])  
               condition = True
               if minus_one_invalid: 
                 condition = token[27] != "-1"
@@ -186,12 +210,37 @@ def read_SMIRed250(root_dir, filename, experiment_id,
                       [int(token[0]), float(token[23]), float(token[24])])
 
         if token[1] == "MSG" and token[3].find(".jpg") != -1:
+            if img_start_time is not None:
+              stimulus_times.append([experiment_id, 
+                                 gender, 
+                                 str(trial_id),
+                                 stimuli_name,
+                                 img_start_time,
+                                 img_end_time,
+                                 img_end_time - img_start_time
+                                  ])
 
             if active:
-                filter_eye_events = idt_classifier(raw_fixations=raw_fixations,
-                                                   minimum_duration=minimum_duration,
-                                                   sample_duration=sample_duration,
-                                                   maximum_dispersion=maximum_dispersion)
+                if fix_classifier == "idt":
+                  filter_eye_events = idt_classifier(
+                        raw_fixations=raw_fixations,
+                        minimum_duration=minimum_duration,
+                        sample_duration=sample_duration,
+                        maximum_dispersion=maximum_dispersion
+                    )
+                elif fix_classifier == "ivt":
+                  filter_eye_events = ivt_classifier(
+                      raw_fixations=raw_fixations,
+                      minimum_duration=minimum_duration,
+                      velocity_threshold=velocity_threshold
+                    )
+                elif fix_classifier == "idt_old":
+                  filter_eye_events = idt_classifier_old(
+                        raw_fixations=raw_fixations,
+                        minimum_duration=minimum_duration,
+                        sample_duration=sample_duration,
+                        maximum_dispersion=maximum_dispersion
+                    )
                 # TODO saccades
 
                 for timestamp, duration, x_cord, y_cord in filter_eye_events:
@@ -219,13 +268,42 @@ def read_SMIRed250(root_dir, filename, experiment_id,
             # Message: vehicle_java2.jpg
             stimuli_name = token[3].split(' ')[-1]
             raw_fixations = []
+            is_new_stimulus = True
+            img_start_time = None
+            img_end_time = None
             active = True
 
     # Adds the last trial
-    filter_fixations = idt_classifier(raw_fixations=raw_fixations,
-                                      minimum_duration=minimum_duration,
-                                      sample_duration=sample_duration,
-                                      maximum_dispersion=maximum_dispersion)
+    if fix_classifier == "idt":
+                  filter_fixations = idt_classifier(
+                        raw_fixations=raw_fixations,
+                        minimum_duration=minimum_duration,
+                        sample_duration=sample_duration,
+                        maximum_dispersion=maximum_dispersion
+                    )
+    elif fix_classifier == "ivt":
+                  filter_fixations = ivt_classifier(
+                      raw_fixations=raw_fixations,
+                      minimum_duration=minimum_duration,
+                      velocity_threshold=velocity_threshold
+                    )
+    elif fix_classifier == "idt_old":
+                  filter_fixations = idt_classifier_old(
+                        raw_fixations=raw_fixations,
+                        minimum_duration=minimum_duration,
+                        sample_duration=sample_duration,
+                        maximum_dispersion=maximum_dispersion
+                    )
+
+    if img_start_time is not None:
+              stimulus_times.append([experiment_id, 
+                                 gender, 
+                                 str(trial_id),
+                                 stimuli_name,
+                                 img_start_time,
+                                 img_end_time,
+                                 img_end_time - img_start_time
+                                  ])
 
     for timestamp, duration, x_cord, y_cord in filter_fixations:
 
@@ -250,5 +328,5 @@ def read_SMIRed250(root_dir, filename, experiment_id,
     if not raw_samples:
       samples = []
 
-    return eye_events, samples
+    return eye_events, samples, stimulus_times
     

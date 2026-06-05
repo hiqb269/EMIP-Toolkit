@@ -56,8 +56,8 @@ Rectangle.java	return	line 9 part 7	class->block->function->block->block_content
 Rectangle.java	this.x2	line 9 part 8	class->block->function->block->block_content->return->expr->name->name->operator->name->operator
 Rectangle.java	-	line 9 part 9	class->block->function->block->block_content->return->expr->name->name
 Rectangle.java	this.x1	line 9 part 10	class->block->function->block->block_content->return->expr->name->name->operator->name
-Rectangle.java	;	line 9 part 11	class->block->function->block
-Rectangle.java	}	line 9 part 12	class->block
+Rectangle.java	;	line 9 part 11	class->block->function->block->block_content->return
+Rectangle.java	}	line 9 part 12	class->block->function->block
 Rectangle.java	public	line 10 part 1	class->block->function->type->specifier
 Rectangle.java	int	line 10 part 2	class->block->function->type->name
 Rectangle.java	height	line 10 part 3	class->block->function->name

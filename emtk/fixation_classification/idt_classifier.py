@@ -6,11 +6,6 @@ def idt_classifier(raw_fixations, minimum_duration=50, sample_duration=4, maximu
     """I-DT classifier based on page 296 of eye tracker manual:
         https://psychologie.unibas.ch/fileadmin/user_upload/psychologie/Forschung/N-Lab/SMI_iView_X_Manual.pdf
 
-        Notes:
-            remember that some data is MSG for mouse clicks.
-            some records are invalid with value -1.
-            read right eye data only.
-
     Parameters
     ----------
     raw_fixations : list
@@ -40,53 +35,67 @@ def idt_classifier(raw_fixations, minimum_duration=50, sample_duration=4, maximu
     window_y = []
 
     filter_fixation = []
+    #Test code
+    #print(f"Length of raw fixations: {len(raw_fixations)}")
+    
+    #maximum_dispersion = 25
+    #minimum_duration = 50
+    #print(f"Using max dispersion: {maximum_dispersion} and minimum duration: {minimum_duration}")
 
-    # Go over all SMPs in trial data
-    count = 0
-    fix = 0
+
+    # Filter valid points first
+    valid_points = []
     for timestamp, x_cord, y_cord in raw_fixations:
-        count = count + 1
         # Filter (skip) coordinates outside of the screen 1920×1080 px
+        if x_cord >= 0 and y_cord >= 0 and x_cord <= 1920 and y_cord <= 1080:
+            valid_points.append([timestamp, x_cord, y_cord])
 
-        if x_cord < 0 or y_cord < 0 or x_cord > 1920 or y_cord > 1080:
-            continue
+    #Test code
+    #print(f"Length of valid points: {len(valid_points)}")
 
-        # Add sample if it appears to be valid
-        window_x.append(x_cord)
-        window_y.append(y_cord)
+    #While there are still points in the valid points
+    index = 0
+    while index < len(valid_points):
+      window_end = min(index + window_size, len(valid_points))
+      window_x = [valid_points[j][1] for j in range(index, window_end)]
+      window_y = [valid_points[j][2] for j in range(index, window_end)]
 
-        # Calculate dispersion = [max(x) - min(x)] + [max(y) - min(y)]
-        dispersion = (max(window_x) - min(window_x)) + \
-            (max(window_y) - min(window_y))
-        #print(f"Current dispersion is {dispersion}")            
-
-        # If dispersion is above maximum_dispersion
-        if dispersion > maximum_dispersion:
-            # Then the window does not represent a fixation
-            # Pop last item in window
-            window_x.pop()
-            window_y.pop()
-            #print(f"Fixation window ends. Maximum dispersion is {maximum_dispersion} Popping last gaze point")
-            #print(f"Length of x-window is {len(window_x)} and length of y-window is {len(window_y)} and window size is {window_size}")
-
-            # Add fixation to fixations if window is not empty (size >= window_size)
-            if len(window_x) == len(window_y) and len(window_x) > window_size:
-                xcord = statistics.mean(window_x)
-                ycord = statistics.mean(window_y)
-                dur = len(window_x) * sample_duration
-                #if xcord > 0.0 and ycord> 0.0:
-                # The fixation is registered at the centroid of the window points
-                filter_fixation.append(
-                    [timestamp, len(window_x) * sample_duration, xcord , ycord])
-                fix = fix + 1
-                #print(window_x)
-                #print(window_y)
-                #print(f"Adding fixation for timestamp: {timestamp} of duration {dur} because x0 is {xcord} and ycord is {ycord} ")
-                #else:
-                 # print(f"Skipping fixation for timestamp: {timestamp} of duration {dur} because x0 is {xcord} and ycord is {ycord} ")
-
-            window_x = []
-            window_y = []
-    #print(f"Processed {count} gaze points and generated {fix} fixations ")
+      # Need at least window_size points to form a valid fixation candidate
+      if len(window_x) < window_size:
+            break
+        
+      # Calculate dispersion = [max(x) - min(x)] + [max(y) - min(y)]
+      dispersion = (max(window_x) - min(window_x)) + (max(window_y) - min(window_y))
+      # If dispersion of window points <= threshold
+      if dispersion <= maximum_dispersion:
+          
+          # Add additional points to the window until dispersion > threshold
+          while window_end < len(valid_points):
+            # Try adding next point
+            next_x = valid_points[window_end][1]
+            next_y = valid_points[window_end][2]
+                
+            # Calculate new dispersion with this point included
+            test_dispersion = (max(window_x + [next_x]) - min(window_x + [next_x])) + \
+                                 (max(window_y + [next_y]) - min(window_y + [next_y]))
+                
+            # If dispersion still acceptable, include the point
+            if test_dispersion <= maximum_dispersion:
+              window_x.append(next_x)
+              window_y.append(next_y)
+              window_end += 1
+            else:
+                    # Dispersion exceeded, stop expanding
+              break
+          
+          xcord = statistics.mean(window_x)
+          ycord = statistics.mean(window_y)
+          duration = (valid_points[window_end-1][0] - valid_points[index][0])/1000
+          timestamp = valid_points[index][0]
+          filter_fixation.append(
+                    [timestamp, duration, xcord , ycord])
+          index= window_end # to hop after next_x and next_y
+      else:
+          index = index + 1
 
     return filter_fixation

@@ -6,6 +6,10 @@ from PIL import ImageDraw
 from emtk.util import _find_background_color, _get_meta_data, _get_stimuli
 from emtk.aoi import find_aoi
 
+FIXATION_OUTLINE = (0, 0, 0, 220)
+RAW_COLOR = (0, 160, 160, 90)      
+FIXATION_FILL = (0, 90, 200, 200) 
+
 
 def __draw_aoi(draw: ImageDraw.Draw, aoi: pd.DataFrame, bg_color: str) -> None:
     """Draw areas of interest on stimuli image.
@@ -72,8 +76,12 @@ def __draw_fixation(draw: ImageDraw.Draw, fixations: pd.DataFrame, draw_number: 
         y = fixation[y0_col]
 
         bound = (x - r, y - r, x + r, y + r)
-        outline_color = (255, 255, 0, 0)
-        fill_color = (242, 255, 0, 128)
+        #outline_color = (80, 80, 80, 200)
+        #outline_color = None
+        outline_color = FIXATION_OUTLINE
+
+        #fill_color = (242, 255, 0, 70)
+        fill_color = FIXATION_FILL
         draw.ellipse(bound, fill=fill_color, outline=outline_color)
 
         if draw_number:
@@ -148,10 +156,15 @@ def __draw_raw_data(draw: ImageDraw.Draw, samples: pd.DataFrame, sample_x_col, s
             y_cord = float(sample[sample_y_col])  # - 150
         dot_size = 2
 
+        #draw.ellipse((x_cord - (dot_size / 2),
+        #              y_cord - (dot_size / 2),
+        #              x_cord + dot_size, y_cord + dot_size),
+        #             fill=(255, 0, 0, 50))
+
         draw.ellipse((x_cord - (dot_size / 2),
                       y_cord - (dot_size / 2),
                       x_cord + dot_size, y_cord + dot_size),
-                     fill=(255, 0, 0, 100))
+                     fill= RAW_COLOR)
 
 
 def draw_trial(eye_events: pd.DataFrame = pd.DataFrame(), samples: pd.DataFrame = pd.DataFrame(),
@@ -225,9 +238,10 @@ def draw_trial(eye_events: pd.DataFrame = pd.DataFrame(), samples: pd.DataFrame 
         __draw_saccade(draw, saccades, draw_number,
                        x0_col, y0_col, x1_col, y1_col)
 
-    plt.figure(figsize=(17, 15))
+    #plt.figure(figsize=(17, 15))
+    plt.figure(figsize=(25,20), dpi = 200)
     plt.imshow(np.asarray(stimuli), interpolation='nearest')
 
     if save_image is not None:
-        plt.savefig(save_image)
+        plt.savefig(save_image, dpi=300, bbox_inches="tight")
         print(save_image, "saved!")

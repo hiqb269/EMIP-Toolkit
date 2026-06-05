@@ -1,0 +1,11 @@
+{
+    "Class declaration": "^(public\\s+class\\s+Rectangle|class\\s+Rectangle)",
+    "Field declarations": "(int\\s+x1|self\\.x1)",
+    "Constructor block": "(public\\s+Rectangle|def\\s+__init__)",
+    "Width method header": "(public\\s+int\\s+width|def\\s+width)",
+    "Height method header": "(public\\s+int\\s+height|def\\s+height)",
+    "Area method header": "(public\\s+double\\s+area|def\\s+area)",
+    "Main method header": "(public\\s+static\\s+void\\s+main|def\\s+main)",
+    "Object creation": "new\\s+Rectangle\\s*\\(",
+    "Method call": "\\.area\\s*\\("
+}

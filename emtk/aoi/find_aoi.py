@@ -149,6 +149,10 @@ def find_aoi(eye_events: pd.DataFrame = pd.DataFrame(),
             final_result.append(
                 ['line', f'line {line_count}', left_bounds[0], upper_bound, right_bounds[-1], lower_bound])
 
+        elif level == 'block':
+            final_result.append(
+                ['block', f'line {line_count}', left_bounds[0], upper_bound, right_bounds[-1], lower_bound])
+
         line_count += 1
 
     # Format pandas dataframe

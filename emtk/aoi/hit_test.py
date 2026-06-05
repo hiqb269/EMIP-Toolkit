@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def hit_test(fixations: pd.DataFrame, aoi_df: pd.DataFrame, radius: int = 25,
+def hit_test(fixations: pd.DataFrame, aoi_df: pd.DataFrame, is_line_level: bool = False, radius: int = 25,
              eye_tracker_col="eye_tracker", experiment_id_col="experiment_id",
              participant_id_col="participant_id", gender_col="gender", filename_col="filename",
              trial_id_col="trial_id", stimuli_module_col="stimuli_module",
@@ -57,7 +57,23 @@ def hit_test(fixations: pd.DataFrame, aoi_df: pd.DataFrame, radius: int = 25,
             
     _aoi_df = aoi_df.copy()[aoi_cols]
 
-    _fixations['_name'] = \
+    if is_line_level:
+      _fixations['_name'] = \
+        _fixations.apply(
+          lambda row: _hit_test_nearest_line(
+          fixation_row=row,
+          aoi_df=_aoi_df,
+          fixation_x_col=fixation_x0_col,
+          fixation_y_col=fixation_y0_col,
+          aoi_x_col=aoi_x_col,
+          aoi_y_col=aoi_y_col,
+          aoi_width_col=aoi_width_col,
+          aoi_height_col=aoi_height_col,
+          aoi_name_col=aoi_name_col,
+        ),
+      axis=1)
+    else:
+      _fixations['_name'] = \
         _fixations.apply(lambda _fixation_row: _hit_test(_fixation_row,
                                                          _aoi_df,
                                                          radius,
@@ -72,6 +88,46 @@ def hit_test(fixations: pd.DataFrame, aoi_df: pd.DataFrame, radius: int = 25,
 
     return _fixations.merge(_aoi_df.add_prefix("aoi_"), left_on="_name",
                             right_on="aoi_name", how="inner").drop("_name", axis=1)
+
+
+def _hit_test_nearest_line(
+    fixation_row: pd.Series,
+    aoi_df: pd.DataFrame,
+    fixation_x_col: str = "x0",
+    fixation_y_col: str = "y0",
+    aoi_x_col: str = "x",
+    aoi_y_col: str = "y",
+    aoi_width_col: str = "width",
+    aoi_height_col: str = "height",
+    aoi_name_col: str = "name",
+    x_margin_px: float = 20,
+    max_distance_px: float | None = None,
+    max_distance_multiplier: float = 1.5,
+):
+    fx = fixation_row[fixation_x_col]
+    fy = fixation_row[fixation_y_col]
+
+    # 1) Horizontal gate: must be within the code block (plus margin)
+    x_left = float(aoi_df[aoi_x_col].min()) - x_margin_px
+    x_right = float((aoi_df[aoi_x_col] + aoi_df[aoi_width_col]).max()) + x_margin_px
+    if not (x_left <= fx <= x_right):
+        return None
+
+    # 2) Nearest line by vertical center
+    centers = aoi_df[aoi_y_col] + (aoi_df[aoi_height_col] / 2)
+    distances = (centers - fy).abs()
+    min_dist = float(distances.min())
+
+    # 3) Vertical sanity threshold
+    if max_distance_px is None:
+        line_h = float(aoi_df[aoi_height_col].median())
+        max_distance_px = max_distance_multiplier * line_h
+    if min_dist > max_distance_px:
+        return None
+
+    closest_idx = distances.idxmin()
+    return aoi_df.loc[closest_idx, aoi_name_col]
+
 
 
 def _hit_test(_fixation_row: pd.DataFrame, aoi_df: pd.DataFrame, radius: int = 25,
@@ -101,8 +157,8 @@ def _hit_test(_fixation_row: pd.DataFrame, aoi_df: pd.DataFrame, radius: int = 2
     for _, aoi_row in aoi_df.iterrows():
         box_x = aoi_row[aoi_x_col] - (radius / 2)
         box_y = aoi_row[aoi_y_col] - (radius / 2)
-        box_w = aoi_row[aoi_width_col] + (radius / 2)
-        box_h = aoi_row[aoi_height_col] + (radius / 2)
+        box_w = aoi_row[aoi_width_col] + radius
+        box_h = aoi_row[aoi_height_col] + radius
 
         if box_x <= _fixation_row[fixation_x0_col] <= box_x + box_w and \
                 box_y <= _fixation_row[fixation_y0_col] <= box_y + box_h:

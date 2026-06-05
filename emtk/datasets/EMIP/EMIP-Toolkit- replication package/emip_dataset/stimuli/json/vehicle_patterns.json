@@ -1,0 +1,12 @@
+{
+    "Class declaration": "^(public\\s+class\\s+Vehicle|class\\s+Vehicle)",
+    "Field declarations": "(String\\s+\\w+\\s*,\\s*\\w+|int\\s+\\w+\\s*,\\s*\\w+)",
+    "Constructor block": "(public\\s+Vehicle|def\\s+__init__)",
+    "Accelerate method header": "(public\\s+int\\s+accelerate|def\\s+accelerate)",
+    "Accelerate method if-condition": "^\\s*if\\s*\\(",
+    "Accelerate method else-branch": "^\\s*else\\s*\\{?",
+    "Return statement": "^\\s*return\\b",
+    "Main method header": "(public\\s+static\\s+void\\s+main|def\\s+main)",
+    "Object creation": "new\\s+Vehicle\\s*\\(",
+    "Method call": "\\.accelerate\\s*\\("
+}
