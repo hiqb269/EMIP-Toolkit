@@ -4,4 +4,6 @@ __pycache__/
 *.tsv
 imagedump/
 results/
+.codex_tmp/
+dataset_faith/second_analysis_outputs/
 
