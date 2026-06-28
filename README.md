@@ -14,8 +14,6 @@ The current analysis should be read conservatively: the available RQ2-RQ4 result
 ## Repository Contents
 
 - `JupyterNotebooks/`: analysis notebooks for RQ1-RQ4.
-- `dataset_faith/`: local study data, Java stimuli, srcML token tags, and derived RQ4 outputs.
-- `reports/`: generated analysis reports, including the RQ2-RQ4 results summary.
 - `emtk/`: the adapted EMIP Toolkit code used to support parsing, fixation processing, AOI mapping, and related analysis steps.
 - `requirements.txt`: core Python dependencies.
 
