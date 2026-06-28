@@ -2,6 +2,8 @@
 
 This repository contains analysis materials for a research project on gender and code comprehension. The project examines whether gender is associated with comprehension accuracy and eye-movement behaviour while accounting for factors such as programming expertise, task, stimulus variant, source-line structure, and semantic code category.
 
+The project is motivated by the idea that code-comprehension performance is only one part of the story: eye-tracking data can also show how participants allocate visual attention while reading source code. The analysis therefore combines outcome-level measures, such as task correctness, with process-level measures, such as fixation time, scanpath length, line revisits, and attention to semantic code constructs. This makes it possible to ask whether observed differences are better explained by gender or by other factors such as prior programming experience, task demands, and properties of the source code itself.
+
 The work uses eye-tracking and code-task data to study four related questions:
 
 - RQ1: whether gender predicts code-comprehension accuracy after controlling for programming expertise and task effects.
