@@ -17,6 +17,27 @@ The current analysis should be read conservatively: the available RQ2-RQ4 result
 - `emtk/`: the adapted EMIP Toolkit code used to support parsing, fixation processing, AOI mapping, and related analysis steps.
 - `requirements.txt`: core Python dependencies.
 
+## Raw Data Setup
+
+The raw EMIP data is not checked into this repository. Download the EMIP replication package from OSF:
+
+https://osf.io/j6vt3/download
+
+Extract the downloaded archive into `emtk/datasets/EMIP/` so the folder structure matches the paths expected by the parser:
+
+```text
+emtk/
+  datasets/
+    EMIP/
+      EMIP-Toolkit- replication package/
+        emip_dataset/
+          rawdata/
+          stimuli/
+          emip_metadata.csv
+```
+
+The `emtk.parsers.EMIP()` loader checks for `emtk/datasets/EMIP/EMIP-Toolkit- replication package/emip_dataset/rawdata`. If that directory is missing, the toolkit will try to download and unzip the OSF package automatically, but placing the archive contents in the structure above is the most reliable setup.
+
 ## Citation
 
 This project builds on the EMIP Toolkit. If you use the toolkit components or derived processing workflow, cite:
